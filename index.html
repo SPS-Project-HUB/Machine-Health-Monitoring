@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Machine Health Monitor</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; margin: 20px; background:#f7f7f7; color:#111; }
+    .card { background:#fff; padding:16px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.08); max-width:600px; margin:12px auto; }
+    h1 { text-align:center }
+    .row { display:flex; justify-content:space-between; padding:6px 0; }
+    .label { color:#666; }
+    .value { font-weight:700; }
+    .fault { color:#b71c1c; font-weight:800; }
+  </style>
+</head>
+<body>
+  <h1>Machine Health Monitor</h1>
+  <div class="card">
+    <div class="row"><div class="label">Voltage</div><div id="voltage" class="value">-- V</div></div>
+    <div class="row"><div class="label">Current</div><div id="current" class="value">-- A</div></div>
+    <div class="row"><div class="label">Power</div><div id="power" class="value">-- W</div></div>
+    <div class="row"><div class="label">PF</div><div id="pf" class="value">--</div></div>
+    <div class="row"><div class="label">DHT Temp</div><div id="temp_dht" class="value">-- °C</div></div>
+    <div class="row"><div class="label">Humidity</div><div id="hum" class="value">-- %</div></div>
+    <div class="row"><div class="label">Coil Temp</div><div id="coil_temp" class="value">-- °C</div></div>
+    <div class="row"><div class="label">Sound</div><div id="sound" class="value">-- %</div></div>
+    <div class="row"><div class="label">Vibration</div><div id="vib" class="value">-- %</div></div>
+    <div class="row"><div class="label">Fault</div><div id="fault" class="value">--</div></div>
+  </div>
+
+  <script type="module">
+    // Firebase App (the core Firebase SDK) is always required and must be listed first
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBZdGMO4yZrg1JQ1Kkwf5PeFBotvIJ02Sk",
+      authDomain: "machine-health-monitorin-b9d9f.firebaseapp.com",
+      databaseURL: "https://machine-health-monitorin-b9d9f-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "machine-health-monitorin-b9d9f",
+      storageBucket: "machine-health-monitorin-b9d9f.firebasestorage.app",
+      messagingSenderId: "238241130011",
+      appId: "1:238241130011:web:e9abee3cb394a33bb3fabe"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const nodeRef = ref(db, 'machine1');
+
+    onValue(nodeRef, (snapshot) => {
+      const data = snapshot.val() || {};
+      document.getElementById('voltage').textContent = (data.voltage !== undefined) ? data.voltage + " V" : "-- V";
+      document.getElementById('current').textContent = (data.current !== undefined) ? data.current + " A" : "-- A";
+      document.getElementById('power').textContent = (data.power !== undefined) ? data.power + " W" : "-- W";
+      document.getElementById('pf').textContent = (data.pf !== undefined) ? data.pf : "--";
+      document.getElementById('temp_dht').textContent = (data.temp_dht !== undefined) ? data.temp_dht + " °C" : "-- °C";
+      document.getElementById('hum').textContent = (data.hum !== undefined) ? data.hum + " %" : "-- %";
+      document.getElementById('coil_temp').textContent = (data.coil_temp !== undefined) ? data.coil_temp + " °C" : "-- °C";
+      document.getElementById('sound').textContent = (data.sound_pct !== undefined) ? data.sound_pct + " %" : "-- %";
+      document.getElementById('vib').textContent = (data.vib_pct !== undefined) ? data.vib_pct + " %" : "-- %";
+      document.getElementById('fault').textContent = (data.fault === true) ? (data.fault_reason || "Fault") : "No fault";
+      if (data.fault === true) document.getElementById('fault').classList.add('fault'); else document.getElementById('fault').classList.remove('fault');
+    }, (err) => {
+      console.error("DB read error:", err);
+    });
+  </script>
+</body>
+</html>
