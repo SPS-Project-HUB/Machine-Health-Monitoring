@@ -1,70 +1,587 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Machine Health Monitor</title>
-  <style>
-    body { font-family: Arial, Helvetica, sans-serif; margin: 20px; background:#f7f7f7; color:#111; }
-    .card { background:#fff; padding:16px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.08); max-width:600px; margin:12px auto; }
-    h1 { text-align:center }
-    .row { display:flex; justify-content:space-between; padding:6px 0; }
-    .label { color:#666; }
-    .value { font-weight:700; }
-    .fault { color:#b71c1c; font-weight:800; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Machine Health Monitoring Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --light-color: #ecf0f1;
+            --dark-color: #2c3e50;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            padding-top: 20px;
+        }
+        
+        .dashboard-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .status-card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: transform 0.3s, box-shadow 0.3s;
+            margin-bottom: 20px;
+            border: none;
+            overflow: hidden;
+        }
+        
+        .status-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+        }
+        
+        .status-card .card-header {
+            font-weight: 600;
+            border-bottom: none;
+            padding: 12px 15px;
+        }
+        
+        .status-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin: 10px 0;
+        }
+        
+        .status-unit {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        
+        .chart-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        
+        .alert-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .alert-normal {
+            background-color: var(--success-color);
+        }
+        
+        .alert-warning {
+            background-color: var(--warning-color);
+        }
+        
+        .alert-danger {
+            background-color: var(--danger-color);
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+        
+        .last-updated {
+            font-size: 0.85rem;
+            color: #6c757d;
+            text-align: right;
+        }
+        
+        .fault-panel {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .fault-active {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+        
+        footer {
+            margin-top: 30px;
+            padding: 20px 0;
+            border-top: 1px solid #dee2e6;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+    </style>
 </head>
 <body>
-  <h1>Machine Health Monitor</h1>
-  <div class="card">
-    <div class="row"><div class="label">Voltage</div><div id="voltage" class="value">-- V</div></div>
-    <div class="row"><div class="label">Current</div><div id="current" class="value">-- A</div></div>
-    <div class="row"><div class="label">Power</div><div id="power" class="value">-- W</div></div>
-    <div class="row"><div class="label">PF</div><div id="pf" class="value">--</div></div>
-    <div class="row"><div class="label">DHT Temp</div><div id="temp_dht" class="value">-- °C</div></div>
-    <div class="row"><div class="label">Humidity</div><div id="hum" class="value">-- %</div></div>
-    <div class="row"><div class="label">Coil Temp</div><div id="coil_temp" class="value">-- °C</div></div>
-    <div class="row"><div class="label">Sound</div><div id="sound" class="value">-- %</div></div>
-    <div class="row"><div class="label">Vibration</div><div id="vib" class="value">-- %</div></div>
-    <div class="row"><div class="label">Fault</div><div id="fault" class="value">--</div></div>
-  </div>
+    <div class="container">
+        <div class="dashboard-header">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1><i class="fas fa-microchip"></i> Machine Health Monitoring</h1>
+                    <p class="mb-0">Real-time monitoring of electrical parameters and environmental conditions</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div id="connection-status" class="alert alert-success d-inline-block mb-0">
+                        <i class="fas fa-wifi"></i> Connected
+                    </div>
+                </div>
+            </div>
+        </div>
 
-  <script type="module">
-    // Firebase App (the core Firebase SDK) is always required and must be listed first
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
-    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
+        <!-- Fault Status Panel -->
+        <div id="fault-panel" class="fault-panel" style="display: none;">
+            <div class="row align-items-center">
+                <div class="col-md-10">
+                    <h4 class="mb-1"><i class="fas fa-exclamation-triangle"></i> System Fault Detected</h4>
+                    <p id="fault-reason" class="mb-0">Fault reason will appear here</p>
+                </div>
+                <div class="col-md-2 text-end">
+                    <span class="badge bg-danger">TRIPPED</span>
+                </div>
+            </div>
+        </div>
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyBZdGMO4yZrg1JQ1Kkwf5PeFBotvIJ02Sk",
-      authDomain: "machine-health-monitorin-b9d9f.firebaseapp.com",
-      databaseURL: "https://machine-health-monitorin-b9d9f-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "machine-health-monitorin-b9d9f",
-      storageBucket: "machine-health-monitorin-b9d9f.firebasestorage.app",
-      messagingSenderId: "238241130011",
-      appId: "1:238241130011:web:e9abee3cb394a33bb3fabe"
-    };
+        <!-- Electrical Parameters -->
+        <div class="row">
+            <div class="col-md-3">
+                <div class="card status-card">
+                    <div class="card-header bg-primary text-white">
+                        <i class="fas fa-bolt"></i> Voltage
+                    </div>
+                    <div class="card-body text-center">
+                        <div class="status-value" id="voltage-value">--</div>
+                        <div class="status-unit">Volts (V)</div>
+                        <div id="voltage-status" class="mt-2">
+                            <span class="alert-indicator alert-normal"></span> Normal
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="card status-card">
+                    <div class="card-header bg-info text-white">
+                        <i class="fas fa-tachometer-alt"></i> Current
+                    </div>
+                    <div class="card-body text-center">
+                        <div class="status-value" id="current-value">--</div>
+                        <div class="status-unit">Amps (A)</div>
+                        <div id="current-status" class="mt-2">
+                            <span class="alert-indicator alert-normal"></span> Normal
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="card status-card">
+                    <div class="card-header bg-success text-white">
+                        <i class="fas fa-power-off"></i> Power
+                    </div>
+                    <div class="card-body text-center">
+                        <div class="status-value" id="power-value">--</div>
+                        <div class="status-unit">Watts (W)</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="card status-card">
+                    <div class="card-header bg-warning text-dark">
+                        <i class="fas fa-wave-square"></i> Power Factor
+                    </div>
+                    <div class="card-body text-center">
+                        <div class="status-value" id="pf-value">--</div>
+                        <div id="pf-status" class="mt-2">
+                            <span class="alert-indicator alert-normal"></span> Normal
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+        <!-- Temperature and Environment -->
+        <div class="row mt-4">
+            <div class="col-md-4">
+                <div class="card status-card">
+                    <div class="card-header bg-danger text-white">
+                        <i class="fas fa-thermometer-full"></i> Coil Temperature
+                    </div>
+                    <div class="card-body text-center">
+                        <div class="status-value" id="coil-temp-value">--</div>
+                        <div class="status-unit">°C</div>
+                        <div id="coil-temp-status" class="mt-2">
+                            <span class="alert-indicator alert-normal"></span> Normal
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card status-card">
+                    <div class="card-header bg-info text-white">
+                        <i class="fas fa-temperature-low"></i> Air Temperature
+                    </div>
+                    <div class="card-body text-center">
+                        <div class="status-value" id="air-temp-value">--</div>
+                        <div class="status-unit">°C</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card status-card">
+                    <div class="card-header bg-secondary text-white">
+                        <i class="fas fa-tint"></i> Humidity
+                    </div>
+                    <div class="card-body text-center">
+                        <div class="status-value" id="humidity-value">--</div>
+                        <div class="status-unit">%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-    const nodeRef = ref(db, 'machine1');
+        <!-- Vibration and Sound -->
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card status-card">
+                    <div class="card-header bg-dark text-white">
+                        <i class="fas fa-volume-up"></i> Sound Level
+                    </div>
+                    <div class="card-body">
+                        <div class="status-value text-center" id="sound-value">--</div>
+                        <div class="status-unit text-center">%</div>
+                        <div class="progress mt-3" style="height: 20px;">
+                            <div id="sound-progress" class="progress-bar bg-success" role="progressbar" style="width: 0%;"></div>
+                        </div>
+                        <div id="sound-status" class="mt-2 text-center">
+                            <span class="alert-indicator alert-normal"></span> Normal
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card status-card">
+                    <div class="card-header bg-dark text-white">
+                        <i class="fas fa-vibration"></i> Vibration Level
+                    </div>
+                    <div class="card-body">
+                        <div class="status-value text-center" id="vibration-value">--</div>
+                        <div class="status-unit text-center">%</div>
+                        <div class="progress mt-3" style="height: 20px;">
+                            <div id="vibration-progress" class="progress-bar bg-success" role="progressbar" style="width: 0%;"></div>
+                        </div>
+                        <div id="vibration-status" class="mt-2 text-center">
+                            <span class="alert-indicator alert-normal"></span> Normal
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-    onValue(nodeRef, (snapshot) => {
-      const data = snapshot.val() || {};
-      document.getElementById('voltage').textContent = (data.voltage !== undefined) ? data.voltage + " V" : "-- V";
-      document.getElementById('current').textContent = (data.current !== undefined) ? data.current + " A" : "-- A";
-      document.getElementById('power').textContent = (data.power !== undefined) ? data.power + " W" : "-- W";
-      document.getElementById('pf').textContent = (data.pf !== undefined) ? data.pf : "--";
-      document.getElementById('temp_dht').textContent = (data.temp_dht !== undefined) ? data.temp_dht + " °C" : "-- °C";
-      document.getElementById('hum').textContent = (data.hum !== undefined) ? data.hum + " %" : "-- %";
-      document.getElementById('coil_temp').textContent = (data.coil_temp !== undefined) ? data.coil_temp + " °C" : "-- °C";
-      document.getElementById('sound').textContent = (data.sound_pct !== undefined) ? data.sound_pct + " %" : "-- %";
-      document.getElementById('vib').textContent = (data.vib_pct !== undefined) ? data.vib_pct + " %" : "-- %";
-      document.getElementById('fault').textContent = (data.fault === true) ? (data.fault_reason || "Fault") : "No fault";
-      if (data.fault === true) document.getElementById('fault').classList.add('fault'); else document.getElementById('fault').classList.remove('fault');
-    }, (err) => {
-      console.error("DB read error:", err);
-    });
-  </script>
+        <!-- Charts -->
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h5>Current Trend</h5>
+                    <canvas id="current-chart"></canvas>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h5>Temperature Trend</h5>
+                    <canvas id="temperature-chart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="last-updated">
+                    Last updated: <span id="last-updated-time">--</span>
+                </div>
+            </div>
+        </div>
+
+        <footer class="text-center">
+            <p>Machine Health Monitoring System | ESP32 + Firebase</p>
+        </footer>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
+    <!-- Font Awesome for icons -->
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyC1x3eO_5OeQjq4Vv2fQ9cJ9XqVZ6bW7pA",
+            authDomain: "machine-health-monitorin-b9d9f.firebaseapp.com",
+            databaseURL: "https://machine-health-monitorin-b9d9f-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "machine-health-monitorin-b9d9f",
+            storageBucket: "machine-health-monitorin-b9d9f.appspot.com",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:abcdef123456"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Chart variables
+        let currentChart, temperatureChart;
+        let currentData = [];
+        let voltageData = [];
+        let coilTempData = [];
+        let airTempData = [];
+        let timeLabels = [];
+
+        // Initialize charts
+        function initializeCharts() {
+            const currentCtx = document.getElementById('current-chart').getContext('2d');
+            currentChart = new Chart(currentCtx, {
+                type: 'line',
+                data: {
+                    labels: timeLabels,
+                    datasets: [
+                        {
+                            label: 'Current (A)',
+                            data: currentData,
+                            borderColor: '#3498db',
+                            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Voltage (V)',
+                            data: voltageData,
+                            borderColor: '#e74c3c',
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            const temperatureCtx = document.getElementById('temperature-chart').getContext('2d');
+            temperatureChart = new Chart(temperatureCtx, {
+                type: 'line',
+                data: {
+                    labels: timeLabels,
+                    datasets: [
+                        {
+                            label: 'Coil Temp (°C)',
+                            data: coilTempData,
+                            borderColor: '#e74c3c',
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Air Temp (°C)',
+                            data: airTempData,
+                            borderColor: '#3498db',
+                            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update charts with new data
+        function updateCharts(data) {
+            const now = new Date();
+            const timeString = now.getHours() + ':' + now.getMinutes() + ':' + now.getSeconds();
+            
+            // Add new data point
+            timeLabels.push(timeString);
+            currentData.push(data.current);
+            voltageData.push(data.voltage);
+            coilTempData.push(data.coil_temp);
+            airTempData.push(data.air_temp);
+            
+            // Keep only last 10 data points
+            if (timeLabels.length > 10) {
+                timeLabels.shift();
+                currentData.shift();
+                voltageData.shift();
+                coilTempData.shift();
+                airTempData.shift();
+            }
+            
+            // Update charts
+            currentChart.update();
+            temperatureChart.update();
+        }
+
+        // Update UI with sensor data
+        function updateUI(data) {
+            // Update basic values
+            document.getElementById('voltage-value').textContent = data.voltage !== -1 ? data.voltage.toFixed(1) : '--';
+            document.getElementById('current-value').textContent = data.current !== -1 ? data.current.toFixed(3) : '--';
+            document.getElementById('power-value').textContent = data.power !== -1 ? data.power.toFixed(1) : '--';
+            document.getElementById('pf-value').textContent = data.pf !== -1 ? data.pf.toFixed(2) : '--';
+            document.getElementById('coil-temp-value').textContent = data.coil_temp !== -127 ? data.coil_temp.toFixed(1) : '--';
+            document.getElementById('air-temp-value').textContent = data.air_temp !== -127 ? data.air_temp.toFixed(1) : '--';
+            document.getElementById('humidity-value').textContent = data.humidity !== -127 ? data.humidity.toFixed(1) : '--';
+            document.getElementById('sound-value').textContent = data.sound_pct.toFixed(1);
+            document.getElementById('vibration-value').textContent = data.vib_pct.toFixed(1);
+            
+            // Update progress bars
+            document.getElementById('sound-progress').style.width = data.sound_pct + '%';
+            document.getElementById('vibration-progress').style.width = data.vib_pct + '%';
+            
+            // Update status indicators based on thresholds
+            updateStatusIndicator('voltage', data.voltage, 180, 260);
+            updateStatusIndicator('current', data.current, 0, 0.10);
+            updateStatusIndicator('pf', data.pf, 0.7, 1);
+            updateStatusIndicator('coil-temp', data.coil_temp, 0, 60);
+            updateStatusIndicator('sound', data.sound_pct, 0, 60);
+            updateStatusIndicator('vibration', data.vib_pct, 0, 60);
+            
+            // Update fault panel
+            const faultPanel = document.getElementById('fault-panel');
+            if (data.fault) {
+                faultPanel.style.display = 'block';
+                faultPanel.classList.add('fault-active');
+                document.getElementById('fault-reason').textContent = data.fault_reason || 'Unknown fault';
+            } else {
+                faultPanel.style.display = 'none';
+                faultPanel.classList.remove('fault-active');
+            }
+            
+            // Update last updated time
+            const now = new Date();
+            document.getElementById('last-updated-time').textContent = now.toLocaleString();
+            
+            // Update charts
+            updateCharts(data);
+        }
+
+        // Update status indicator based on value and thresholds
+        function updateStatusIndicator(type, value, min, max) {
+            const indicator = document.getElementById(`${type}-status`);
+            const alertIndicator = indicator.querySelector('.alert-indicator');
+            
+            if (value === -1 || value === -127) {
+                // Invalid reading
+                alertIndicator.className = 'alert-indicator alert-danger';
+                indicator.innerHTML = '<span class="alert-indicator alert-danger"></span> Error';
+                return;
+            }
+            
+            if (type === 'pf') {
+                // For power factor, we care about the lower threshold only
+                if (value < min) {
+                    alertIndicator.className = 'alert-indicator alert-danger';
+                    indicator.innerHTML = `<span class="alert-indicator alert-danger"></span> Low (${value.toFixed(2)})`;
+                } else {
+                    alertIndicator.className = 'alert-indicator alert-normal';
+                    indicator.innerHTML = '<span class="alert-indicator alert-normal"></span> Normal';
+                }
+            } else if (type === 'sound' || type === 'vibration') {
+                // For sound and vibration, we care about the upper threshold
+                if (value > max) {
+                    alertIndicator.className = 'alert-indicator alert-danger';
+                    indicator.innerHTML = `<span class="alert-indicator alert-danger"></span> High (${value.toFixed(1)}%)`;
+                    
+                    // Update progress bar color
+                    const progressBar = document.getElementById(`${type}-progress`);
+                    progressBar.className = 'progress-bar bg-danger';
+                } else if (value > max * 0.8) {
+                    alertIndicator.className = 'alert-indicator alert-warning';
+                    indicator.innerHTML = `<span class="alert-indicator alert-warning"></span> Elevated (${value.toFixed(1)}%)`;
+                    
+                    // Update progress bar color
+                    const progressBar = document.getElementById(`${type}-progress`);
+                    progressBar.className = 'progress-bar bg-warning';
+                } else {
+                    alertIndicator.className = 'alert-indicator alert-normal';
+                    indicator.innerHTML = '<span class="alert-indicator alert-normal"></span> Normal';
+                    
+                    // Update progress bar color
+                    const progressBar = document.getElementById(`${type}-progress`);
+                    progressBar.className = 'progress-bar bg-success';
+                }
+            } else {
+                // For other parameters, check both min and max
+                if (value < min || value > max) {
+                    alertIndicator.className = 'alert-indicator alert-danger';
+                    indicator.innerHTML = `<span class="alert-indicator alert-danger"></span> Out of Range`;
+                } else {
+                    alertIndicator.className = 'alert-indicator alert-normal';
+                    indicator.innerHTML = '<span class="alert-indicator alert-normal"></span> Normal';
+                }
+            }
+        }
+
+        // Listen for Firebase data changes
+        function startFirebaseListener() {
+            const machineRef = database.ref('machine_readings');
+            
+            machineRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    updateUI(data);
+                    document.getElementById('connection-status').className = 'alert alert-success d-inline-block mb-0';
+                    document.getElementById('connection-status').innerHTML = '<i class="fas fa-wifi"></i> Connected';
+                }
+            }, (error) => {
+                console.error('Firebase error:', error);
+                document.getElementById('connection-status').className = 'alert alert-danger d-inline-block mb-0';
+                document.getElementById('connection-status').innerHTML = '<i class="fas fa-exclamation-triangle"></i> Connection Error';
+            });
+        }
+
+        // Initialize the dashboard when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCharts();
+            startFirebaseListener();
+            
+            // Auto-refresh data every 15 seconds (matching Arduino interval)
+            setInterval(() => {
+                // Charts will update automatically via Firebase listener
+            }, 15000);
+        });
+    </script>
 </body>
 </html>
